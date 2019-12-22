@@ -10,7 +10,7 @@ import collections
 from pathlib import Path
 
 
-# You can adjust some setting here. Default is for QOwnNotes app.
+# You can adjust some setting here.
 media_dir_name = 'media'  # name of the directory inside the produced directory where all images and attachments will be stored
 creation_date_in_filename = False  # True to insert note creation time to the note file name, False to disable
 
@@ -97,8 +97,8 @@ for file in files_to_convert:
 
         print('Converting note "{}"'.format(note_title))
 
-        content = re.sub('<img class="[^"]*syno-notestation-image-object" src=[^>]*ref="',
-                         '<img src="', note_data.get('content', ''))
+        content = re.sub('<img class=[^>]*syno-notestation-image-object[^>]*src=[^>]*ref=',
+                         '<img src=', note_data.get('content', ''))
 
         attachments_data = note_data.get('attachment')
         attachment_list = []
@@ -122,18 +122,20 @@ for file in files_to_convert:
 
                 try:
                     Path(parent_notebook.media_path / name).write_bytes(nsx_file.read('file_' + md5))
-                    attachment_list.append(html_link_template.format(link_path_str, name))
+                    attachment_link = html_link_template.format(link_path_str, name)
                 except Exception:
                     if source:
-                        attachment_list.append(html_link_template.format(source, name))
+                        attachment_link = html_link_template.format(source, name)
                     else:
                         print('Can\'t find attachment "{}" of note "{}"'.format(name, note_title))
-                        attachment_list.append(html_link_template.format(source, 'NOT FOUND'))
+                        attachment_link = html_link_template.format(source, 'NOT FOUND')
 
                 if ref and source:
                     content = content.replace(ref, source)
                 elif ref:
                     content = content.replace(ref, link_path_str)
+                else:
+                    attachment_list.append(attachment_link)
 
         if attachment_list:
             content = 'Attachments: {}  \n{}'.format(', '.join(attachment_list), content)
@@ -176,8 +178,13 @@ for file in files_to_convert:
                                                              notebook_log_str,
                                                              len(converted_note_ids),
                                                              len(note_id_to_title_index.keys())))
+
     try:
         recycle_bin_media_path.rmdir()
+    except OSError:
+        pass
+
+    try:
         recycle_bin_path.rmdir()
     except OSError:
         pass
